@@ -1,9 +1,6 @@
 [submodule "hw/mcu/nordic/nrfx"]
 	path = hw/mcu/nordic/nrfx
 	url = https://github.com/NordicSemiconductor/nrfx.git
-[submodule "tools/uf2"]
-	path = tools/uf2
-	url = https://github.com/microsoft/uf2.git
 [submodule "hw/mcu/sony/cxd56/spresense-exported-sdk"]
 	path = hw/mcu/sony/cxd56/spresense-exported-sdk
 	url = https://github.com/sonydevworld/spresense-exported-sdk.git
