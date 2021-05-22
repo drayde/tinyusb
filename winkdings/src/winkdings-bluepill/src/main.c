@@ -1,4 +1,6 @@
 /* 
+ * Based on https://github.com/hathach/tinyusb/tree/master/examples/device/webusb_serial
+ *
  * The MIT License (MIT)
  *
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
@@ -23,7 +25,7 @@
  *
  */
 
-/* This example demonstrates WebUSB as web serial with browser with WebUSB support (e.g Chrome).
+/* Uses WebUSB with browser with WebUSB support (e.g Chrome).
  * After enumerated successfully, browser will pop-up notification
  * with URL to landing page, click on it to test
  *  - Click "Connect" and select device, When connected the on-board LED will litted up.
