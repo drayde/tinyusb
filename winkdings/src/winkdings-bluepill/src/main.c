@@ -84,6 +84,8 @@ void webserial_task(void);
 void echo_all(uint8_t* buf, uint32_t count);
 void echo_string(const char* buf, uint32_t count);
 #define ECHO_STR(x) echo_string(x, sizeof(x));
+int32_t hexchar2int(uint8_t c);
+uint32_t header_bytecount(uint8_t* buf);
 
 /*------------- MAIN -------------*/
 int main(void)
@@ -105,26 +107,10 @@ int main(void)
   return 0;
 }
 
-int32_t hexchar2int(uint8_t c)
+void handle_line(uint8_t* buffer, uint32_t count)
 {
-  if (c>='0' && c<='9')
-    return c-'0';
-  if (c>='A' && c<='F')
-    return 10+c-'A';
-  if (c>='a' && c<='f')
-    return 10+c-'a';
-  return -1;
-}
-
-uint32_t header_bytecount(uint8_t* buf)
-{
-  int32_t d1 = hexchar2int(buf[1]);
-  int32_t d2 = hexchar2int(buf[2]);
-  int32_t d3 = hexchar2int(buf[3]);
-  int32_t d4 = hexchar2int(buf[4]);
-  if (d1<0 || d2<0|| d3<0|| d4<0)
-    return 0;
-  return d4 + 16*d3 + 16*16*d2 + 16*16*16*d1;
+  echo_all(buffer, count);
+  ECHO_STR("\nOK\n");
 }
 
 void on_line_read(uint32_t count)
@@ -164,8 +150,7 @@ void on_line_read(uint32_t count)
       ECHO_STR("FAIL shorter than specified\n");
       return;
     }
-    echo_all(rxbuffer+6, header_bytes);
-    ECHO_STR("\nOK\n");
+    handle_line(rxbuffer+6, header_bytes);
   }
 }
 
@@ -363,4 +348,31 @@ void led_blinking_task(void)
 
   board_led_write(led_state);
   led_state = 1 - led_state; // toggle
+}
+
+
+//--------------------------------------------------------------------+
+// HELPER
+//--------------------------------------------------------------------+
+
+int32_t hexchar2int(uint8_t c)
+{
+  if (c>='0' && c<='9')
+    return c-'0';
+  if (c>='A' && c<='F')
+    return 10+c-'A';
+  if (c>='a' && c<='f')
+    return 10+c-'a';
+  return -1;
+}
+
+uint32_t header_bytecount(uint8_t* buf)
+{
+  int32_t d1 = hexchar2int(buf[1]);
+  int32_t d2 = hexchar2int(buf[2]);
+  int32_t d3 = hexchar2int(buf[3]);
+  int32_t d4 = hexchar2int(buf[4]);
+  if (d1<0 || d2<0|| d3<0|| d4<0)
+    return 0;
+  return d4 + 16*d3 + 16*16*d2 + 16*16*16*d1;
 }
