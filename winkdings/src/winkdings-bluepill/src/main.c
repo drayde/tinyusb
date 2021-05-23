@@ -105,15 +105,45 @@ int main(void)
   return 0;
 }
 
-void on_line_read(int count)
+int32_t hexchar2int(uint8_t c)
 {
+  if (c>='0' && c<='9')
+    return c-'0';
+  if (c>='A' && c<='F')
+    return 10+c-'A';
+  if (c>='a' && c<='f')
+    return 10+c-'a';
+  return -1;
+}
+
+uint32_t header_bytecount(uint8_t* buf)
+{
+  int32_t d1 = hexchar2int(buf[1]);
+  int32_t d2 = hexchar2int(buf[2]);
+  int32_t d3 = hexchar2int(buf[3]);
+  int32_t d4 = hexchar2int(buf[4]);
+  if (d1<0 || d2<0|| d3<0|| d4<0)
+    return 0;
+  return d4 + 16*d3 + 16*16*d2 + 16*16*16*d1;
+}
+
+void on_line_read(uint32_t count)
+{
+  /* Expected format
+   * #xxxx#ssssssssss\n
+   * #                    -> header start
+   *  xxxx                -> byte count c, given in hex, at least 1
+   *      #               -> header end
+   *       ssssssssss     -> payload, c bytes long
+   *                 \n   -> closing newline
+   */
   if (count > 0)
   {
     // debug: echo back
     //echo_all(rxbuffer, count);
     //ECHO_STR("\n");
     
-    if (count < 6)
+    if (count < 7)
     {
       ECHO_STR("FAIL too short\n");
       return;
@@ -123,7 +153,18 @@ void on_line_read(int count)
       ECHO_STR("FAIL invalid format\n");
       return;
     }
-    echo_all(rxbuffer+6, count-6);
+    uint32_t header_bytes = header_bytecount(rxbuffer);
+    if (header_bytes < 1)
+    {
+      ECHO_STR("FAIL invalid header byte count\n");
+      return;
+    }
+    if (header_bytes+6 > count)
+    {
+      ECHO_STR("FAIL shorter than specified\n");
+      return;
+    }
+    echo_all(rxbuffer+6, header_bytes);
     ECHO_STR("\nOK\n");
   }
 }
