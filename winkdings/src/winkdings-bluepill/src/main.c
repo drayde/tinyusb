@@ -3,8 +3,6 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -30,16 +28,6 @@
  * with URL to landing page, click on it to test
  *  - Click "Connect" and select device, When connected the on-board LED will litted up.
  *  - Any charters received from either webusb/Serial will be echo back to webusb and Serial
- *
- * Note:
- * - The WebUSB landing page notification is currently disabled in Chrome
- * on Windows due to Chromium issue 656702 (https://crbug.com/656702). You have to
- * go to landing page (below) to test
- *
- * - On Windows 7 and prior: You need to use Zadig tool to manually bind the
- * WebUSB interface with the WinUSB driver for Chrome to access. From windows 8 and 10, this
- * is done automatically by firmware.
- *
  * - On Linux/macOS, udev permission may need to be updated by
  *   - copying '/examples/device/99-tinyusb.rules' file to /etc/udev/rules.d/ then
  *   - run 'sudo udevadm control --reload-rules && sudo udevadm trigger'
@@ -74,31 +62,37 @@ enum  {
 
 static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
 
-#define URL  "www.tinyusb.org/examples/webusb-serial"
+#define URL  "www.andreaskahler.com/winkdings/"
 
 const tusb_desc_webusb_url_t desc_url =
 {
   .bLength         = 3 + sizeof(URL) - 1,
   .bDescriptorType = 3, // WEBUSB URL type
-  .bScheme         = 1, // 0: http, 1: https
+  .bScheme         = 0, // 0: http, 1: https
   .url             = URL
 };
 
 static bool web_serial_connected = false;
 
+uint8_t rxbuffer[1024];
+uint32_t rxbuffer_pos = 0;
+
 //------------- prototypes -------------//
 void led_blinking_task(void);
 void cdc_task(void);
 void webserial_task(void);
+void echo_all(uint8_t* buf, uint32_t count);
+void echo_string(const char* buf, uint32_t count);
+#define ECHO_STR(x) echo_string(x, sizeof(x));
 
 /*------------- MAIN -------------*/
 int main(void)
 {
   board_init();
   tusb_init();
-  serial_init();
+  //serial_init();
 
-  serial_send("test", 4);
+  //serial_send("test", 4);
 
   while (1)
   {
@@ -111,28 +105,79 @@ int main(void)
   return 0;
 }
 
+void on_line_read(int count)
+{
+  if (count > 0)
+  {
+    // debug: echo back
+    //echo_all(rxbuffer, count);
+    //ECHO_STR("\n");
+    
+    if (count < 6)
+    {
+      ECHO_STR("FAIL too short\n");
+      return;
+    }
+    if (rxbuffer[0] != '#' || rxbuffer[5] != '#')
+    {
+      ECHO_STR("FAIL invalid format\n");
+      return;
+    }
+    echo_all(rxbuffer+6, count-6);
+    ECHO_STR("\nOK\n");
+  }
+}
+
+void webserial_task(void)
+{
+  if ( web_serial_connected )
+  {
+    if ( tud_vendor_available() )
+    {
+      uint32_t maxread = sizeof(rxbuffer) - rxbuffer_pos ;
+      uint32_t count = tud_vendor_read(rxbuffer+rxbuffer_pos, maxread);
+      for (uint32_t pos=rxbuffer_pos; pos<rxbuffer_pos+count; ++pos)
+      {
+        if (rxbuffer[pos] == '\n')
+        {
+          // have complete line
+          on_line_read(pos);
+          // reset
+          rxbuffer_pos = 0;
+          return;
+        }
+      }
+      // no newline found
+      rxbuffer_pos += count;
+      if (rxbuffer_pos >= sizeof(rxbuffer))
+      {
+        // message exeeds buffer length
+        tud_vendor_read(rxbuffer, sizeof(rxbuffer)); // try to read rest of message
+        rxbuffer_pos = 0;
+        ECHO_STR("FAIL too long\n");
+        return;
+      }
+    }
+  }
+}
+
+
+
+
 // send characters to both CDC and WebUSB
-void echo_all(uint8_t buf[], uint32_t count)
+void echo_string(const char* buf, uint32_t count)
+{
+    echo_all((uint8_t*)buf, count);
+}
+
+void echo_all(uint8_t* buf, uint32_t count)
 {
   // echo to web serial
   if ( web_serial_connected )
   {
     tud_vendor_write(buf, count);
   }
-
-  // echo to cdc
-  if ( tud_cdc_connected() )
-  {
-    for(uint32_t i=0; i<count; i++)
-    {
-      tud_cdc_write_char(buf[i]);
-
-      if ( buf[i] == '\r' ) tud_cdc_write_char('\n');
-    }
-    tud_cdc_write_flush();
-  }
 }
-
 //--------------------------------------------------------------------+
 // Device callbacks
 //--------------------------------------------------------------------+
@@ -194,7 +239,8 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
             memcpy(&total_len, desc_ms_os_20+8, 2);
 
             return tud_control_xfer(rhport, request, (void*) desc_ms_os_20, total_len);
-          }else
+          }
+          else
           {
             return false;
           }
@@ -215,7 +261,7 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
           board_led_write(true);
           blink_interval_ms = BLINK_ALWAYS_ON;
 
-          tud_vendor_write_str("\r\nTinyUSB WebUSB device example\r\n");
+          tud_vendor_write_str("\r\nWinkdings BluePill WebUSB device\r\n");
         }else
         {
           blink_interval_ms = BLINK_MOUNTED;
@@ -233,20 +279,6 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
   return false;
 }
 
-void webserial_task(void)
-{
-  if ( web_serial_connected )
-  {
-    if ( tud_vendor_available() )
-    {
-      uint8_t buf[64];
-      uint32_t count = tud_vendor_read(buf, sizeof(buf));
-
-      // echo back to both web serial and cdc
-      echo_all(buf, count);
-    }
-  }
-}
 
 
 //--------------------------------------------------------------------+
@@ -254,19 +286,7 @@ void webserial_task(void)
 //--------------------------------------------------------------------+
 void cdc_task(void)
 {
-  if ( tud_cdc_connected() )
-  {
-    // connected and there are data available
-    if ( tud_cdc_available() )
-    {
-      uint8_t buf[64];
-
-      uint32_t count = tud_cdc_read(buf, sizeof(buf));
-
-      // echo back to both web serial and cdc
-      echo_all(buf, count);
-    }
-  }
+  // do nothing
 }
 
 // Invoked when cdc when line state changed e.g connected/disconnected
@@ -278,7 +298,7 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
   if ( dtr && rts )
   {
     // print initial message when connected
-    tud_cdc_write_str("\r\nTinyUSB WebUSB device example\r\n");
+    tud_cdc_write_str("\r\nWinkdings BluePill WebUSB device (CDC)\r\n");
   }
 }
 
