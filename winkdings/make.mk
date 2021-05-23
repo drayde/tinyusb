@@ -99,8 +99,8 @@ CFLAGS += \
   -Wwrite-strings \
   -Wsign-compare \
   -Wmissing-format-attribute \
-  -Wunreachable-code \
-  -Wcast-align
+  -Wunreachable-code 
+#  -Wcast-align    # iisues with stm32f1xx_hal_uart.c
 
 # Debugging/Optimization
 ifeq ($(DEBUG), 1)

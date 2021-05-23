@@ -52,19 +52,20 @@
 #include "bsp/board.h"
 #include "tusb.h"
 #include "usb_descriptors.h"
+#include "serialout.h"
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
 //--------------------------------------------------------------------+
 
 /* Blink pattern
- * - 250 ms  : device not mounted
- * - 1000 ms : device mounted
+ * - 100 ms  : device not mounted
+ * - 500 ms : device mounted
  * - 2500 ms : device is suspended
  */
 enum  {
-  BLINK_NOT_MOUNTED = 250,
-  BLINK_MOUNTED     = 1000,
+  BLINK_NOT_MOUNTED = 100,
+  BLINK_MOUNTED     = 500,
   BLINK_SUSPENDED   = 2500,
 
   BLINK_ALWAYS_ON   = UINT32_MAX,
@@ -94,8 +95,10 @@ void webserial_task(void);
 int main(void)
 {
   board_init();
-
   tusb_init();
+  serial_init();
+
+  serial_send("test", 4);
 
   while (1)
   {
