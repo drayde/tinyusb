@@ -92,9 +92,7 @@ int main(void)
 {
   board_init();
   tusb_init();
-  //serial_init();
-
-  //serial_send("test", 4);
+  serial_init();
 
   while (1)
   {
@@ -111,6 +109,9 @@ void handle_line(uint8_t* buffer, uint32_t count)
 {
   echo_all(buffer, count);
   ECHO_STR("\nOK\n");
+
+  serial_send(buffer, count);
+  serial_send((uint8_t*)"\n", 1);
 }
 
 void on_line_read(uint32_t count)

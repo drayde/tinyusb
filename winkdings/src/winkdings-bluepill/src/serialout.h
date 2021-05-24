@@ -9,7 +9,7 @@
 
 void serial_init(void);
 
-void serial_send(const char* buffer, int count);
+uint16_t serial_send(const uint8_t* buffer, uint16_t count);
 
 #ifdef __cplusplus
  }

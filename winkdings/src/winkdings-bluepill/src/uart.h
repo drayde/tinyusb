@@ -5,6 +5,16 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f1xx_hal.h"
 
+#ifndef UART_IRQ_PRIO
+#define UART_IRQ_PRIO       1
+#endif
+#ifndef UART_IRQ_SUBPRIO
+#define UART_IRQ_SUBPRIO    0
+#endif
+
+#define TX_TIMEOUT  1000
+
+
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
 /* User can use this section to tailor USARTx/UARTx instance used and associated
